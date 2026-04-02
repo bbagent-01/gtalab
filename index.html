@@ -68,19 +68,15 @@
   .color-row input[type="color"]::-webkit-color-swatch { border: none; border-radius: 3px; }
 
   .gen-row {
-    display: flex; gap: 6px; margin-bottom: 10px; align-items: center;
+    display: flex; gap: 6px; margin-bottom: 8px; align-items: center;
   }
-  .gen-row select {
-    flex: 1; padding: 4px 6px; background: rgba(255,255,255,0.06);
+  .gen-row select, .gen-row button {
+    padding: 4px 8px; background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.12); border-radius: 5px;
     color: #aaa; font-size: 11px; font-family: inherit; cursor: pointer;
   }
+  .gen-row select { flex: 1; }
   .gen-row select option { background: #1a1a1a; }
-  .gen-row button {
-    padding: 4px 10px; background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.12); border-radius: 5px;
-    color: #aaa; font-size: 11px; cursor: pointer; font-family: inherit; white-space: nowrap;
-  }
   .gen-row button:hover { background: rgba(255,255,255,0.15); color: #ddd; }
 
   .slider-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -105,6 +101,8 @@
     color: #aaa; font-size: 11px; cursor: pointer; font-family: inherit;
   }
   .editor-actions button:hover { background: rgba(255,255,255,0.15); color: #ddd; }
+
+  .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 6px 0 8px; }
 
   /* ── Version Nav ── */
   .version-nav {
@@ -148,18 +146,21 @@
   <div class="section">
     <div class="section-label">Colors</div>
     <div class="section-body">
+      <div class="color-row"><label>Highlight</label><input type="color" value="#EB1A1F" data-color="highlight"></div>
+      <div class="divider"></div>
       <div class="gen-row">
         <select id="harmonySelect">
           <option value="analogous">Analogous</option>
           <option value="triadic">Triadic</option>
           <option value="complementary">Complementary</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
           <option value="surprise">Surprise</option>
+        </select>
+        <select id="toneSelect">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
         </select>
         <button onclick="generatePalette()">Generate</button>
       </div>
-      <div class="color-row"><label>Highlight</label><input type="color" value="#EB1A1F" data-color="highlight"></div>
       <div class="color-row"><label>Accent</label><input type="color" value="#FA5230" data-color="accent"></div>
       <div class="color-row"><label>Mid</label><input type="color" value="#CC1A40" data-color="mid"></div>
       <div class="color-row"><label>Shadow</label><input type="color" value="#73080F" data-color="shadow"></div>
@@ -180,11 +181,10 @@
       <div class="slider-row"><label>Vignette</label><input type="range" min="0" max="1" step="0.05" value="0.5" data-param="vignette"><span class="val">0.50</span></div>
       <div class="slider-row"><label>Mouse Attract</label><input type="range" min="0" max="1" step="0.05" value="0.3" data-param="mouseAttract"><span class="val">0.30</span></div>
       <div class="slider-row"><label>Blob Count</label><input type="range" min="1" max="5" step="1" value="2" data-param="blobCount"><span class="val">2</span></div>
-      <div class="slider-row"><label>Deformation</label><input type="range" min="0" max="1" step="0.05" value="0.3" data-param="deformation"><span class="val">0.30</span></div>
     </div>
   </div>
 
-  <!-- Save/Load -->
+  <!-- Save/Load/Reset -->
   <div class="section">
     <div class="section-body" style="padding-top:12px">
       <div class="editor-actions">
@@ -217,7 +217,6 @@ const params = {
   vignette: 0.5,
   mouseAttract: 0.3,
   blobCount: 2.0,
-  deformation: 0.3,
 };
 
 const defaultColors = {
@@ -279,61 +278,48 @@ function hslToHex(h, s, l) {
 function rand(min, max) { return min + Math.random() * (max - min); }
 
 function generatePalette() {
-  const mode = document.getElementById('harmonySelect').value;
+  const harmony = document.getElementById('harmonySelect').value;
+  const tone = document.getElementById('toneSelect').value;
   const highlightHex = document.querySelector('[data-color="highlight"]').value;
-  const [hh, hs, hl] = hexToHSL(highlightHex);
+  const [hh, hs] = hexToHSL(highlightHex);
+  const isLight = tone === 'light';
 
+  // Compute hue offsets based on harmony
   let accentH, midH, shadowH, bgH;
-  let accentS, midS, shadowS, bgS;
-  let accentL, midL, shadowL, bgL;
-
-  if (mode === 'analogous') {
+  if (harmony === 'analogous') {
     accentH = hh + rand(20, 45);   midH = hh - rand(15, 40);
     shadowH = hh + rand(-20, 20);  bgH = hh + rand(-10, 10);
-  } else if (mode === 'triadic') {
+  } else if (harmony === 'triadic') {
     accentH = hh + 120 + rand(-20, 20);  midH = hh + 240 + rand(-20, 20);
     shadowH = hh + rand(-30, 30);         bgH = hh + rand(-15, 15);
-  } else if (mode === 'complementary') {
+  } else if (harmony === 'complementary') {
     accentH = hh + 180 + rand(-25, 25);   midH = hh + 180 + rand(-40, 40);
     shadowH = hh + rand(-20, 20);          bgH = hh + 180 + rand(-15, 15);
-  } else if (mode === 'light') {
-    accentH = hh + rand(-30, 30);   midH = hh + rand(-20, 20);
-    shadowH = hh + rand(-15, 15);   bgH = hh + rand(-10, 10);
-  } else if (mode === 'dark') {
-    accentH = hh + rand(-30, 30);   midH = hh + rand(-20, 20);
-    shadowH = hh + rand(-15, 15);   bgH = hh + rand(-10, 10);
   } else { // surprise
     accentH = rand(0, 360);  midH = rand(0, 360);
     shadowH = rand(0, 360);  bgH = rand(0, 360);
   }
 
-  if (mode === 'light') {
+  // Lightness and saturation based on tone
+  let accentS, accentL, midS, midL, shadowS, shadowL, bgS, bgL;
+  if (isLight) {
     accentS = Math.min(100, hs + rand(-10, 15));
-    accentL = Math.min(85, hl + rand(10, 25));
-    midS = Math.max(40, hs - rand(0, 15));
-    midL = Math.min(75, hl + rand(5, 20));
-    shadowS = Math.max(20, hs * rand(0.4, 0.7));
-    shadowL = rand(35, 50);
-    bgS = rand(5, 15);
-    bgL = rand(12, 22);
-  } else if (mode === 'dark') {
-    accentS = Math.min(100, hs + rand(-10, 10));
-    accentL = Math.max(15, hl - rand(10, 25));
-    midS = Math.max(30, hs - rand(5, 30));
-    midL = Math.max(10, hl - rand(15, 30));
-    shadowS = Math.max(10, hs * rand(0.15, 0.4));
-    shadowL = rand(5, 15);
+    accentL = rand(55, 72);
+    midS = Math.max(30, hs - rand(0, 20));
+    midL = rand(45, 62);
+    shadowS = Math.max(15, hs * rand(0.3, 0.6));
+    shadowL = rand(65, 78);
     bgS = rand(3, 12);
-    bgL = rand(1, 4);
+    bgL = rand(92, 98); // mostly white
   } else {
     accentS = Math.min(100, hs + rand(-15, 10));
-    accentL = Math.min(70, hl + rand(-10, 10));
+    accentL = rand(35, 55);
     midS = Math.max(30, hs - rand(0, 25));
-    midL = Math.max(20, hl - rand(5, 20));
+    midL = rand(25, 42);
     shadowS = Math.max(15, hs * rand(0.2, 0.5));
-    shadowL = rand(12, 25);
-    bgS = rand(5, 20);
-    bgL = rand(2, 6);
+    shadowL = rand(8, 18);
+    bgS = rand(3, 12);
+    bgL = rand(1, 5); // mostly black
   }
 
   const generated = {
@@ -449,9 +435,8 @@ uniform float u_refraction;
 uniform float u_vignette;
 uniform float u_mouseAttract;
 uniform float u_blobCount;
-uniform float u_deformation;
 
-// Simplex 2D noise
+// Simplex 2D noise (Ashima Arts)
 vec3 mod289(vec3 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
 vec2 mod289(vec2 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
 vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
@@ -477,19 +462,8 @@ float snoise(vec2 v) {
   return 130.0 * dot(m, g);
 }
 
-// Compute single blob mask with organic deformation
-float blobMaskAt(vec2 p, vec2 center, float t, float idx) {
-  vec2 delta = p - center;
-  float dist = length(delta);
-  float angle = atan(delta.y, delta.x);
-  float deform = 1.0 + snoise(vec2(angle * 2.0, t * 0.08 * u_speed + idx * 3.7)) * u_deformation * 0.4
-               + snoise(vec2(angle * 4.0 + idx * 11.0, t * 0.12 * u_speed)) * u_deformation * 0.15;
-  float warpedDist = dist * deform;
-  return smoothstep(u_blobSize, 0.08, warpedDist);
-}
-
-// Compute blob center for given index
-vec2 blobCenter(float idx, float t, float aspect, vec2 mouse) {
+// Compute blob center for a given index
+vec2 getBlobCenter(float idx, float t, float aspect, vec2 mouse) {
   float spd = u_speed;
   float rise = min(t * 0.04 * spd, 1.0);
   float baseY = mix(-0.7, 0.0, rise);
@@ -510,34 +484,33 @@ vec3 sampleGradient(vec2 p, float t, vec2 mouse) {
 
   float aspect = u_resolution.x / u_resolution.y;
 
-  // Multi-blob: compute combined mask (unrolled, up to 5 blobs)
+  // Multi-blob: combine masks using v3's clean radial smoothstep
   float combinedMask = 0.0;
-  vec2 primaryCenter = vec2(0.0);
+  vec2 primaryCenter = getBlobCenter(0.0, t, aspect, mouse);
 
-  // Blob 0 (always active)
-  vec2 c0 = blobCenter(0.0, t, aspect, mouse);
-  primaryCenter = c0;
-  combinedMask = max(combinedMask, blobMaskAt(p, c0, t, 0.0));
+  // Blob 0 (always)
+  float d0 = length(p - primaryCenter);
+  combinedMask = max(combinedMask, smoothstep(u_blobSize, 0.08, d0));
 
   // Blob 1
   if (u_blobCount > 1.5) {
-    vec2 c1 = blobCenter(1.0, t, aspect, mouse);
-    combinedMask = max(combinedMask, blobMaskAt(p, c1, t, 1.0));
+    vec2 c1 = getBlobCenter(1.0, t, aspect, mouse);
+    combinedMask = max(combinedMask, smoothstep(u_blobSize, 0.08, length(p - c1)));
   }
   // Blob 2
   if (u_blobCount > 2.5) {
-    vec2 c2 = blobCenter(2.0, t, aspect, mouse);
-    combinedMask = max(combinedMask, blobMaskAt(p, c2, t, 2.0));
+    vec2 c2 = getBlobCenter(2.0, t, aspect, mouse);
+    combinedMask = max(combinedMask, smoothstep(u_blobSize, 0.08, length(p - c2)));
   }
   // Blob 3
   if (u_blobCount > 3.5) {
-    vec2 c3 = blobCenter(3.0, t, aspect, mouse);
-    combinedMask = max(combinedMask, blobMaskAt(p, c3, t, 3.0));
+    vec2 c3 = getBlobCenter(3.0, t, aspect, mouse);
+    combinedMask = max(combinedMask, smoothstep(u_blobSize, 0.08, length(p - c3)));
   }
   // Blob 4
   if (u_blobCount > 4.5) {
-    vec2 c4 = blobCenter(4.0, t, aspect, mouse);
-    combinedMask = max(combinedMask, blobMaskAt(p, c4, t, 4.0));
+    vec2 c4 = getBlobCenter(4.0, t, aspect, mouse);
+    combinedMask = max(combinedMask, smoothstep(u_blobSize, 0.08, length(p - c4)));
   }
 
   float m1 = smoothstep(-0.1, 0.5, n1) * combinedMask;
@@ -571,13 +544,13 @@ void main() {
   vec2 mouse = (u_mouse - 0.5) * vec2(aspect, 1.0);
   float t = u_time;
 
-  // Columns
+  // Columns — identical to v3
   float COL_WIDTH = aspect / u_columns;
   float colPos = st.x + aspect * 0.5;
   float colIndex = floor(colPos / COL_WIDTH);
   float inCol = fract(colPos / COL_WIDTH);
 
-  // Edge distortion
+  // Edge distortion — identical to v3
   float edgeDist = min(inCol, 1.0 - inCol);
   float edgeDistort = smoothstep(0.22, 0.0, edgeDist) * u_edgeBend;
 
@@ -588,7 +561,7 @@ void main() {
     edgeDistort * edgeNoise * 0.30
   );
 
-  // Per-column refraction
+  // Per-column refraction — identical to v3
   float hash1 = fract(sin(colIndex * 127.1) * 43758.5453);
   float hash2 = fract(sin(colIndex * 269.5 + 37.0) * 18643.2891);
   vec2 refractOffset = vec2((hash1 - 0.5) * 0.4, (hash2 - 0.5) * 0.3) * u_refraction;
@@ -596,15 +569,15 @@ void main() {
   vec2 samplePos = st + refractOffset + edgeOffset;
   vec3 color = sampleGradient(samplePos, t, mouse);
 
-  // Mouse glow
+  // Mouse glow — identical to v3
   float mouseDist = length(st - mouse * 0.3);
   color += exp(-mouseDist * mouseDist * 3.0) * 0.05 * vec3(0.9, 0.2, 0.1);
 
-  // Vignette
+  // Vignette — identical to v3
   float vig = 1.0 - smoothstep(0.15, 1.0, length(st * 0.85));
   color *= (1.0 - u_vignette) + u_vignette * vig;
 
-  // Luminance-responsive film grain
+  // Luminance-responsive film grain (improved from v3)
   float lum = dot(color, vec3(0.2126, 0.7152, 0.0722));
   float grainResponse = smoothstep(0.0, 0.15, lum) * smoothstep(0.8, 0.4, lum);
   float g = grain(gl_FragCoord.xy, t) * u_grain * (0.3 + grainResponse * 0.7);
@@ -646,7 +619,7 @@ const uniforms = {};
 ['u_resolution','u_time','u_mouse',
  'u_highlight','u_accent','u_mid','u_shadow','u_bg',
  'u_speed','u_columns','u_grain','u_edgeBend','u_blobSize','u_refraction','u_vignette','u_mouseAttract',
- 'u_blobCount','u_deformation'
+ 'u_blobCount'
 ].forEach(name => { uniforms[name] = gl.getUniformLocation(program, name); });
 
 // ── Mouse Tracking ───────────────────────────────────────────
@@ -685,7 +658,6 @@ function render() {
   gl.uniform1f(uniforms.u_vignette,     params.vignette);
   gl.uniform1f(uniforms.u_mouseAttract, params.mouseAttract);
   gl.uniform1f(uniforms.u_blobCount,    params.blobCount);
-  gl.uniform1f(uniforms.u_deformation,  params.deformation);
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   requestAnimationFrame(render);
