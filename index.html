@@ -146,11 +146,12 @@
   <div class="section">
     <div class="section-label">Colors</div>
     <div class="section-body">
-      <div class="color-row"><label>Highlight</label><input type="color" value="#EB1A1F" data-color="highlight"></div>
+      <div class="color-row"><label>Primary</label><input type="color" value="#EB1A1F" data-color="highlight"></div>
       <div class="divider"></div>
       <div class="gen-row">
         <select id="harmonySelect">
           <option value="analogous">Analogous</option>
+          <option value="analogous-narrow">Analogous Narrow</option>
           <option value="triadic">Triadic</option>
           <option value="complementary">Complementary</option>
           <option value="surprise">Surprise</option>
@@ -161,10 +162,10 @@
         </select>
         <button onclick="generatePalette()">Generate</button>
       </div>
-      <div class="color-row"><label>Accent</label><input type="color" value="#FA5230" data-color="accent"></div>
+      <div class="color-row"><label>Secondary</label><input type="color" value="#FA5230" data-color="accent"></div>
       <div class="color-row"><label>Mid</label><input type="color" value="#CC1A40" data-color="mid"></div>
-      <div class="color-row"><label>Shadow</label><input type="color" value="#73080F" data-color="shadow"></div>
-      <div class="color-row"><label>Background</label><input type="color" value="#050304" data-color="bg"></div>
+      <div class="color-row"><label>Background 1</label><input type="color" value="#73080F" data-color="shadow"></div>
+      <div class="color-row"><label>Background 2</label><input type="color" value="#050304" data-color="bg"></div>
     </div>
   </div>
 
@@ -174,7 +175,8 @@
     <div class="section-body">
       <div class="slider-row"><label>Speed</label><input type="range" min="0.1" max="3" step="0.05" value="1" data-param="speed"><span class="val">1.0</span></div>
       <div class="slider-row"><label>Columns</label><input type="range" min="2" max="24" step="1" value="12" data-param="columns"><span class="val">12</span></div>
-      <div class="slider-row"><label>Grain</label><input type="range" min="0" max="0.5" step="0.005" value="0.08" data-param="grain"><span class="val">0.08</span></div>
+      <div class="slider-row"><label>Grain Texture</label><input type="range" min="0" max="0.5" step="0.005" value="0.06" data-param="grainTexture"><span class="val">0.06</span></div>
+      <div class="slider-row"><label>Grain Flicker</label><input type="range" min="0" max="0.3" step="0.005" value="0.03" data-param="grainFlicker"><span class="val">0.03</span></div>
       <div class="slider-row"><label>Edge Bend</label><input type="range" min="0" max="10" step="0.1" value="1" data-param="edgeBend"><span class="val">1.0</span></div>
       <div class="slider-row"><label>Blob Size</label><input type="range" min="0.2" max="1.5" step="0.05" value="0.75" data-param="blobSize"><span class="val">0.75</span></div>
       <div class="slider-row"><label>Refraction</label><input type="range" min="0" max="2" step="0.05" value="1" data-param="refraction"><span class="val">1.0</span></div>
@@ -210,7 +212,8 @@ const colors = {
 const params = {
   speed: 1.0,
   columns: 12.0,
-  grain: 0.08,
+  grainTexture: 0.06,
+  grainFlicker: 0.03,
   edgeBend: 1.0,
   blobSize: 0.75,
   refraction: 1.0,
@@ -220,7 +223,7 @@ const params = {
 };
 
 const defaultColors = {
-  highlight: '#EB1A1F', accent: '#FA5230', mid: '#CC1A40', shadow: '#73080F', bg: '#050304'
+  highlight: '#EB1A1F', accent: '#FA5230', mid: '#CC1A40', shadow: '#73080F', bg: '#050304' // Primary, Secondary, Mid, BG1, BG2
 };
 const defaultParams = { ...params };
 
@@ -281,52 +284,49 @@ function generatePalette() {
   const harmony = document.getElementById('harmonySelect').value;
   const tone = document.getElementById('toneSelect').value;
   const highlightHex = document.querySelector('[data-color="highlight"]').value;
-  const [hh, hs] = hexToHSL(highlightHex);
+  const [hh, hs, hl] = hexToHSL(highlightHex);
   const isLight = tone === 'light';
 
+  // Target background luminosity
+  const bgTarget = isLight ? rand(92, 98) : rand(1, 5);
+
   // Compute hue offsets based on harmony
-  let accentH, midH, shadowH, bgH;
+  let secH, midH, bg1H, bg2H;
   if (harmony === 'analogous') {
-    accentH = hh + rand(20, 45);   midH = hh - rand(15, 40);
-    shadowH = hh + rand(-20, 20);  bgH = hh + rand(-10, 10);
+    secH = hh + rand(20, 45);   midH = hh - rand(15, 40);
+    bg1H = hh + rand(-20, 20);  bg2H = hh + rand(-10, 10);
+  } else if (harmony === 'analogous-narrow') {
+    secH = hh + rand(8, 20);    midH = hh - rand(8, 20);
+    bg1H = hh + rand(-10, 10);  bg2H = hh + rand(-5, 5);
   } else if (harmony === 'triadic') {
-    accentH = hh + 120 + rand(-20, 20);  midH = hh + 240 + rand(-20, 20);
-    shadowH = hh + rand(-30, 30);         bgH = hh + rand(-15, 15);
+    secH = hh + 120 + rand(-20, 20);  midH = hh + 240 + rand(-20, 20);
+    bg1H = hh + rand(-30, 30);         bg2H = hh + rand(-15, 15);
   } else if (harmony === 'complementary') {
-    accentH = hh + 180 + rand(-25, 25);   midH = hh + 180 + rand(-40, 40);
-    shadowH = hh + rand(-20, 20);          bgH = hh + 180 + rand(-15, 15);
+    secH = hh + 180 + rand(-25, 25);   midH = hh + 180 + rand(-40, 40);
+    bg1H = hh + rand(-20, 20);          bg2H = hh + 180 + rand(-15, 15);
   } else { // surprise
-    accentH = rand(0, 360);  midH = rand(0, 360);
-    shadowH = rand(0, 360);  bgH = rand(0, 360);
+    secH = rand(0, 360);  midH = rand(0, 360);
+    bg1H = rand(0, 360);  bg2H = rand(0, 360);
   }
 
-  // Lightness and saturation based on tone
-  let accentS, accentL, midS, midL, shadowS, shadowL, bgS, bgL;
-  if (isLight) {
-    accentS = Math.min(100, hs + rand(-10, 15));
-    accentL = rand(55, 72);
-    midS = Math.max(30, hs - rand(0, 20));
-    midL = rand(45, 62);
-    shadowS = Math.max(15, hs * rand(0.3, 0.6));
-    shadowL = rand(65, 78);
-    bgS = rand(3, 12);
-    bgL = rand(92, 98); // mostly white
-  } else {
-    accentS = Math.min(100, hs + rand(-15, 10));
-    accentL = rand(35, 55);
-    midS = Math.max(30, hs - rand(0, 25));
-    midL = rand(25, 42);
-    shadowS = Math.max(15, hs * rand(0.2, 0.5));
-    shadowL = rand(8, 18);
-    bgS = rand(3, 12);
-    bgL = rand(1, 5); // mostly black
-  }
+  // Luminosity progression: Primary → Secondary → Mid → BG1 → BG2
+  // Each step moves toward bgTarget
+  const step1 = hl + (bgTarget - hl) * rand(0.15, 0.3);  // Secondary
+  const step2 = hl + (bgTarget - hl) * rand(0.35, 0.55);  // Mid
+  const step3 = hl + (bgTarget - hl) * rand(0.65, 0.8);   // BG1
+  const step4 = bgTarget;                                  // BG2
+
+  // Saturation decreases toward background
+  const secS = Math.min(100, hs + rand(-10, 10));
+  const midS = Math.max(20, hs * rand(0.5, 0.8));
+  const bg1S = Math.max(8, hs * rand(0.15, 0.35));
+  const bg2S = rand(3, 12);
 
   const generated = {
-    accent: hslToHex(accentH, accentS, accentL),
-    mid:    hslToHex(midH, midS, midL),
-    shadow: hslToHex(shadowH, shadowS, shadowL),
-    bg:     hslToHex(bgH, bgS, bgL),
+    accent: hslToHex(secH, secS, step1),
+    mid:    hslToHex(midH, midS, step2),
+    shadow: hslToHex(bg1H, bg1S, step3),
+    bg:     hslToHex(bg2H, bg2S, step4),
   };
 
   for (const k in generated) {
@@ -428,7 +428,8 @@ uniform vec3 u_bg;
 // Controls
 uniform float u_speed;
 uniform float u_columns;
-uniform float u_grain;
+uniform float u_grainTexture;
+uniform float u_grainFlicker;
 uniform float u_edgeBend;
 uniform float u_blobSize;
 uniform float u_refraction;
@@ -529,12 +530,19 @@ vec3 sampleGradient(vec2 p, float t, vec2 mouse) {
   return g;
 }
 
-// Multi-octave film grain
-float grain(vec2 p, float t) {
+// Static grain texture (no movement — gritty distortion look)
+float grainTexture(vec2 p) {
+  float g1 = snoise(p * 0.12) * 0.5;
+  float g2 = snoise(p * 0.25 + vec2(50.0, 30.0)) * 0.3;
+  float g3 = fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453) * 2.0 - 1.0;
+  return g1 + g2 * 0.5 + g3 * 0.4;
+}
+
+// Animated grain flicker (moving static)
+float grainFlicker(vec2 p, float t) {
   float g1 = fract(sin(dot(p, vec2(12.9898, 78.233)) + t) * 43758.5453) * 2.0 - 1.0;
   float g2 = fract(sin(dot(p * 1.7, vec2(39.346, 11.135)) + t * 1.3) * 18643.2891) * 2.0 - 1.0;
-  float g3 = snoise(p * 0.15 + t * 97.0) * 0.8;
-  return g1 * 0.6 + g2 * 0.25 + g3 * 0.15;
+  return g1 * 0.7 + g2 * 0.3;
 }
 
 void main() {
@@ -577,11 +585,14 @@ void main() {
   float vig = 1.0 - smoothstep(0.15, 1.0, length(st * 0.85));
   color *= (1.0 - u_vignette) + u_vignette * vig;
 
-  // Luminance-responsive film grain (improved from v3)
+  // Luminance-responsive grain
   float lum = dot(color, vec3(0.2126, 0.7152, 0.0722));
   float grainResponse = smoothstep(0.0, 0.15, lum) * smoothstep(0.8, 0.4, lum);
-  float g = grain(gl_FragCoord.xy, t) * u_grain * (0.3 + grainResponse * 0.7);
-  color += g;
+  float gMask = 0.3 + grainResponse * 0.7;
+  // Static texture grain (gritty distortion — no movement)
+  color += grainTexture(gl_FragCoord.xy) * u_grainTexture * gMask;
+  // Animated flicker grain (moving static)
+  color += grainFlicker(gl_FragCoord.xy, t) * u_grainFlicker * gMask;
 
   color = pow(max(color, vec3(0.0)), vec3(0.94));
   gl_FragColor = vec4(color, 1.0);
@@ -618,7 +629,7 @@ gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 const uniforms = {};
 ['u_resolution','u_time','u_mouse',
  'u_highlight','u_accent','u_mid','u_shadow','u_bg',
- 'u_speed','u_columns','u_grain','u_edgeBend','u_blobSize','u_refraction','u_vignette','u_mouseAttract',
+ 'u_speed','u_columns','u_grainTexture','u_grainFlicker','u_edgeBend','u_blobSize','u_refraction','u_vignette','u_mouseAttract',
  'u_blobCount'
 ].forEach(name => { uniforms[name] = gl.getUniformLocation(program, name); });
 
@@ -651,7 +662,8 @@ function render() {
   // Params
   gl.uniform1f(uniforms.u_speed,        params.speed);
   gl.uniform1f(uniforms.u_columns,      params.columns);
-  gl.uniform1f(uniforms.u_grain,        params.grain);
+  gl.uniform1f(uniforms.u_grainTexture,  params.grainTexture);
+  gl.uniform1f(uniforms.u_grainFlicker,  params.grainFlicker);
   gl.uniform1f(uniforms.u_edgeBend,     params.edgeBend);
   gl.uniform1f(uniforms.u_blobSize,     params.blobSize);
   gl.uniform1f(uniforms.u_refraction,   params.refraction);
